@@ -2,9 +2,11 @@ package com.privat.dataenrichmentservice;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 
 @SpringBootTest
-class DataEnrichmentServiceApplicationTests {
+@Import(TestcontainersConfiguration.class)
+class  DataEnrichmentServiceApplicationTests {
 
     @Test
     void contextLoads() {
