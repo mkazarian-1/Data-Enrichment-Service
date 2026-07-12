@@ -11,5 +11,4 @@ public class DataEnrichmentServiceApplication {
     public static void main(String[] args) {
         SpringApplication.run(DataEnrichmentServiceApplication.class, args);
     }
-
 }

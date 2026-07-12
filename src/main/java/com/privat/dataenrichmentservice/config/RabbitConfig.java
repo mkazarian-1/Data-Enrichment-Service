@@ -25,28 +25,37 @@ class RabbitConfig {
     Declarables rabbitTopology(AppProperties properties) {
         AppProperties.Rabbit rabbit = properties.rabbit();
 
-        DirectExchange incomingExchange = ExchangeBuilder.directExchange(rabbit.incomingExchange()).build();
+        DirectExchange incomingExchange =
+                ExchangeBuilder.directExchange(rabbit.incomingExchange()).build();
         Queue incomingQueue = QueueBuilder.durable(rabbit.incomingQueue())
                 .deadLetterExchange(rabbit.dlx())
                 .deadLetterRoutingKey(rabbit.incomingRoutingKey())
                 .build();
-        Binding incomingBinding = BindingBuilder.bind(incomingQueue).to(incomingExchange)
-                .with(rabbit.incomingRoutingKey());
+        Binding incomingBinding =
+                BindingBuilder.bind(incomingQueue).to(incomingExchange).with(rabbit.incomingRoutingKey());
 
-        DirectExchange deadLetterExchange = ExchangeBuilder.directExchange(rabbit.dlx()).build();
+        DirectExchange deadLetterExchange =
+                ExchangeBuilder.directExchange(rabbit.dlx()).build();
         Queue deadLetterQueue = QueueBuilder.durable(rabbit.dlq()).build();
-        Binding deadLetterBinding = BindingBuilder.bind(deadLetterQueue).to(deadLetterExchange)
-                .with(rabbit.incomingRoutingKey());
+        Binding deadLetterBinding =
+                BindingBuilder.bind(deadLetterQueue).to(deadLetterExchange).with(rabbit.incomingRoutingKey());
 
-        TopicExchange resultExchange = ExchangeBuilder.topicExchange(rabbit.resultExchange()).build();
+        TopicExchange resultExchange =
+                ExchangeBuilder.topicExchange(rabbit.resultExchange()).build();
         Queue resultQueue = QueueBuilder.durable(rabbit.resultQueue()).build();
-        Binding resultBinding = BindingBuilder.bind(resultQueue).to(resultExchange)
-                .with(rabbit.resultRoutingKey());
+        Binding resultBinding =
+                BindingBuilder.bind(resultQueue).to(resultExchange).with(rabbit.resultRoutingKey());
 
         return new Declarables(
-                incomingExchange, incomingQueue, incomingBinding,
-                deadLetterExchange, deadLetterQueue, deadLetterBinding,
-                resultExchange, resultQueue, resultBinding);
+                incomingExchange,
+                incomingQueue,
+                incomingBinding,
+                deadLetterExchange,
+                deadLetterQueue,
+                deadLetterBinding,
+                resultExchange,
+                resultQueue,
+                resultBinding);
     }
 
     /**
