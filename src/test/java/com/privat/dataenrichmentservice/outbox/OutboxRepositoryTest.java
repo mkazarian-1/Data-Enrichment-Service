@@ -1,17 +1,16 @@
 package com.privat.dataenrichmentservice.outbox;
 
-import com.privat.dataenrichmentservice.TestcontainersConfiguration;
-import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
-import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
-import org.springframework.context.annotation.Import;
-import tools.jackson.databind.ObjectMapper;
+import static org.assertj.core.api.Assertions.assertThat;
 
+import com.privat.dataenrichmentservice.TestcontainersConfiguration;
 import java.util.List;
 import java.util.UUID;
-
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
+import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
+import org.springframework.context.annotation.Import;
+import tools.jackson.databind.ObjectMapper;
 
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
@@ -25,7 +24,8 @@ class OutboxRepositoryTest {
 
     @Test
     void savesPayloadAsJsonb() {
-        String payload = "{\"logId\": 654321, \"messageId\": \"123e4567-e89b-12d3-a456-426614174000\", \"result\": true}";
+        String payload =
+                "{\"logId\": 654321, \"messageId\": \"123e4567-e89b-12d3-a456-426614174000\", \"result\": true}";
         OutboxEntity saved = repository.saveAndFlush(pendingRow(payload));
 
         assertThat(saved.getId()).isNotNull();
@@ -50,11 +50,11 @@ class OutboxRepositoryTest {
         repository.flush();
 
         List<OutboxEntity> batch = repository.findPendingBatch(2);
-        assertThat(batch).extracting(OutboxEntity::getId)
-                .containsExactly(first.getId(), second.getId());
+        assertThat(batch).extracting(OutboxEntity::getId).containsExactly(first.getId(), second.getId());
 
         List<OutboxEntity> all = repository.findPendingBatch(10);
-        assertThat(all).extracting(OutboxEntity::getId)
+        assertThat(all)
+                .extracting(OutboxEntity::getId)
                 .containsExactly(first.getId(), second.getId(), third.getId())
                 .doesNotContain(sent.getId());
     }

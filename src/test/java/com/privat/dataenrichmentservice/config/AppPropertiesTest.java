@@ -1,37 +1,36 @@
 package com.privat.dataenrichmentservice.config;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.time.Duration;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 
-import java.time.Duration;
-
-import static org.assertj.core.api.Assertions.assertThat;
-
 class AppPropertiesTest {
 
     private static final String[] VALID_PROPERTIES = {
-            "app.enrichment.base-url=http://localhost:8081",
-            "app.enrichment.connect-timeout=2s",
-            "app.enrichment.read-timeout=5s",
-            "app.rabbit.incoming-exchange=enrichment.incoming.exchange",
-            "app.rabbit.incoming-queue=enrichment.incoming.queue",
-            "app.rabbit.incoming-routing-key=enrichment.request",
-            "app.rabbit.dlx=enrichment.incoming.dlx",
-            "app.rabbit.dlq=enrichment.incoming.dlq",
-            "app.rabbit.result-exchange=enrichment.result.exchange",
-            "app.rabbit.result-queue=enrichment.result.queue",
-            "app.rabbit.result-routing-key=enrichment.result",
-            "app.rabbit.retry.max-attempts=4",
-            "app.rabbit.retry.initial-interval=1s",
-            "app.rabbit.retry.multiplier=2.0",
-            "app.rabbit.retry.max-interval=10s",
-            "app.outbox.poll-interval=500ms",
-            "app.outbox.batch-size=100"
+        "app.enrichment.base-url=http://localhost:8081",
+        "app.enrichment.connect-timeout=2s",
+        "app.enrichment.read-timeout=5s",
+        "app.rabbit.incoming-exchange=enrichment.incoming.exchange",
+        "app.rabbit.incoming-queue=enrichment.incoming.queue",
+        "app.rabbit.incoming-routing-key=enrichment.request",
+        "app.rabbit.dlx=enrichment.incoming.dlx",
+        "app.rabbit.dlq=enrichment.incoming.dlq",
+        "app.rabbit.result-exchange=enrichment.result.exchange",
+        "app.rabbit.result-queue=enrichment.result.queue",
+        "app.rabbit.result-routing-key=enrichment.result",
+        "app.rabbit.retry.max-attempts=4",
+        "app.rabbit.retry.initial-interval=1s",
+        "app.rabbit.retry.multiplier=2.0",
+        "app.rabbit.retry.max-interval=10s",
+        "app.outbox.poll-interval=500ms",
+        "app.outbox.batch-size=100"
     };
 
-    private final ApplicationContextRunner runner = new ApplicationContextRunner()
-            .withUserConfiguration(PropertiesHolder.class);
+    private final ApplicationContextRunner runner =
+            new ApplicationContextRunner().withUserConfiguration(PropertiesHolder.class);
 
     @Test
     void bindsAllPropertiesToTypedRecord() {
@@ -73,6 +72,5 @@ class AppPropertiesTest {
     }
 
     @EnableConfigurationProperties(AppProperties.class)
-    static class PropertiesHolder {
-    }
+    static class PropertiesHolder {}
 }
