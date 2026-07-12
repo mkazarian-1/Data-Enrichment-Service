@@ -1,0 +1,41 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: enrichment-postgres
+    ports:
+      # 5434 on the host: avoids clashing with a locally installed PostgreSQL on 5432
+      - "5434:5432"
+    environment:
+      POSTGRES_DB: enrichment
+      POSTGRES_USER: enrichment
+      POSTGRES_PASSWORD: enrichment
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U enrichment -d enrichment" ]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    container_name: enrichment-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: [ "CMD", "rabbitmq-diagnostics", "check_port_connectivity" ]
+      interval: 5s
+      timeout: 10s
+      retries: 10
+
+  wiremock:
+    image: wiremock/wiremock:3.13.1
+    container_name: enrichment-wiremock
+    ports:
+      - "8081:8080"
+    volumes:
+      - ./docker/wiremock/mappings:/home/wiremock/mappings
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8080/__admin/health" ]
+      interval: 5s
+      timeout: 3s
+      retries: 10

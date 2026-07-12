@@ -1,0 +1,14 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "/enrich"
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "body": "{\"userId\": {{jsonPath request.body '$.userId'}}, \"result\": true}",
+    "transformers": [ "response-template" ]
+  }
+}
