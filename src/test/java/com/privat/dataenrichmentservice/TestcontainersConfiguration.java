@@ -7,10 +7,6 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.rabbitmq.RabbitMQContainer;
 import org.testcontainers.utility.DockerImageName;
 
-/**
- * Shared container definitions for all integration tests. Containers are static singletons so
- * every cached Spring test context reuses the same instances within one test JVM run.
- */
 @TestConfiguration(proxyBeanMethods = false)
 public class TestcontainersConfiguration {
 

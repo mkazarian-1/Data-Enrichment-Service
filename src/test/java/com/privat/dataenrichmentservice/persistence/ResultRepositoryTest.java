@@ -19,10 +19,6 @@ class ResultRepositoryTest {
     @Autowired
     private ResultRepository repository;
 
-    /**
-     * The UNIQUE constraint on message_id (V1__init.sql) is the idempotency backstop:
-     * duplicate-race handling in the processing service relies on this exact exception.
-     */
     @Test
     void duplicateMessageIdRejected() {
         UUID messageId = UUID.randomUUID();

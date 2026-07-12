@@ -41,7 +41,6 @@ public class OutboxEntity {
     @Column(name = "routing_key", nullable = false, length = 128)
     private String routingKey;
 
-    // Raw JSON string; the relay publishes it verbatim, so it is stored exactly as serialized.
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(nullable = false, columnDefinition = "jsonb")
     private String payload;
@@ -54,7 +53,6 @@ public class OutboxEntity {
     @Column(nullable = false)
     private int attempts;
 
-    // The DB default (now()) is the single source of time; Hibernate reads it back after insert.
     @Generated
     @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
     private OffsetDateTime createdAt;

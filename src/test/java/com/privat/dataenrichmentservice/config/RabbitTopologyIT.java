@@ -26,8 +26,6 @@ class RabbitTopologyIT {
 
     @Test
     void allQueuesExistOnBroker() {
-        // getQueueProperties opens a broker connection, which also triggers the idempotent
-        // declaration of all Declarables — null here means the queue was never declared.
         assertThat(amqpAdmin.getQueueProperties(properties.rabbit().incomingQueue()))
                 .isNotNull();
         assertThat(amqpAdmin.getQueueProperties(properties.rabbit().dlq())).isNotNull();
@@ -46,8 +44,6 @@ class RabbitTopologyIT {
                 .containsEntry("x-dead-letter-exchange", properties.rabbit().dlx())
                 .containsEntry("x-dead-letter-routing-key", properties.rabbit().incomingRoutingKey());
 
-        // The declared (arg-carrying) definition is accepted by the broker: re-declaration is
-        // idempotent and would fail with a precondition error if the broker held different args.
         assertThat(amqpAdmin.declareQueue(incoming))
                 .isEqualTo(properties.rabbit().incomingQueue());
     }
