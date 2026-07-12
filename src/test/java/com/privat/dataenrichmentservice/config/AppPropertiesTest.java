@@ -60,7 +60,6 @@ class AppPropertiesTest {
         });
     }
 
-
     @Test
     void blankQueueNameFailsStartup() {
         runner.withPropertyValues(VALID_PROPERTIES)

@@ -2,7 +2,6 @@ package com.privat.dataenrichmentservice.client;
 
 import com.privat.dataenrichmentservice.client.dto.EnrichmentRequest;
 import com.privat.dataenrichmentservice.client.dto.EnrichmentResponse;
-import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
@@ -45,7 +44,7 @@ public class EnrichmentClient {
         return response;
     }
 
-    private static void fatal(HttpStatusCode status, byte[] body) throws IOException {
+    private static void fatal(HttpStatusCode status, byte[] body) {
         throw new EnrichmentFatalException("Enrichment API rejected the request: %s, body: %s"
                 .formatted(status, new String(body, StandardCharsets.UTF_8)));
     }
