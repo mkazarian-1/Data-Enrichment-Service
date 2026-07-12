@@ -35,7 +35,7 @@ class OutboxRepositoryTest {
         assertThat(saved.getSentAt()).isNull();
 
         OutboxEntity found = repository.findById(saved.getId()).orElseThrow();
-        // jsonb normalizes formatting/key order — compare trees, not strings
+
         assertThat(JSON.readTree(found.getPayload())).isEqualTo(JSON.readTree(payload));
     }
 

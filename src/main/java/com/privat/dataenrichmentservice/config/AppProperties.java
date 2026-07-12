@@ -10,10 +10,6 @@ import java.time.Duration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
 
-/**
- * Single typed home for every tunable of the service (PRD §8). Validation runs at startup,
- * so a misconfigured deployment fails fast instead of misbehaving at runtime.
- */
 @Validated
 @ConfigurationProperties(prefix = "app")
 public record AppProperties(

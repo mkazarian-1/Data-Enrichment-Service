@@ -60,10 +60,6 @@ class AppPropertiesTest {
         });
     }
 
-    /**
-     * The fail-fast contract: a misconfigured deployment must die at startup,
-     * not at the first message. This is the behavior the validation annotations buy us.
-     */
     @Test
     void blankQueueNameFailsStartup() {
         runner.withPropertyValues(VALID_PROPERTIES)

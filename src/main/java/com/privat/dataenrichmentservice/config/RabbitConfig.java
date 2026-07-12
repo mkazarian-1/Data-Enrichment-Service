@@ -14,10 +14,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import tools.jackson.databind.json.JsonMapper;
 
-/**
- * Messaging topology (PRD §7.1) and JSON conversion. Everything is declared idempotently
- * on the first broker connection; names come exclusively from {@link AppProperties}.
- */
 @Configuration(proxyBeanMethods = false)
 class RabbitConfig {
 
@@ -58,10 +54,6 @@ class RabbitConfig {
                 resultBinding);
     }
 
-    /**
-     * Picked up by Boot for both the listener container factory and the {@code RabbitTemplate}.
-     * Jackson 3 ships java-time support out of the box and writes dates as ISO strings by default.
-     */
     @Bean
     MessageConverter jsonMessageConverter(JsonMapper jsonMapper) {
         return new JacksonJsonMessageConverter(jsonMapper);
