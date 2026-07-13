@@ -1,7 +1,9 @@
 package com.privat.dataenrichmentservice.outbox;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.privat.dataenrichmentservice.messaging.dto.ResultMessage;
 import java.util.UUID;
@@ -24,8 +26,9 @@ class OutboxWriterTest {
     void serializesPayloadAndSavesPendingRow() {
         OutboxWriter writer =
                 new OutboxWriter(outboxRepository, JsonMapper.builder().build());
+        when(outboxRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
-        writer.enqueue(
+        OutboxEntity returned = writer.enqueue(
                 MESSAGE_ID,
                 "enrichment.result.exchange",
                 "enrichment.result",
@@ -33,6 +36,7 @@ class OutboxWriterTest {
 
         ArgumentCaptor<OutboxEntity> savedEntity = ArgumentCaptor.forClass(OutboxEntity.class);
         verify(outboxRepository).save(savedEntity.capture());
+        assertThat(returned).isSameAs(savedEntity.getValue());
 
         OutboxEntity entity = savedEntity.getValue();
         assertThat(entity.getMessageId()).isEqualTo(MESSAGE_ID);

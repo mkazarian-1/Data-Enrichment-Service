@@ -9,6 +9,7 @@ import static org.mockito.Mockito.doThrow;
 import com.privat.dataenrichmentservice.TestcontainersConfiguration;
 import com.privat.dataenrichmentservice.client.dto.EnrichmentResponse;
 import com.privat.dataenrichmentservice.messaging.dto.IncomingMessage;
+import com.privat.dataenrichmentservice.outbox.OutboxEntity;
 import com.privat.dataenrichmentservice.outbox.OutboxWriter;
 import com.privat.dataenrichmentservice.persistence.ResultRepository;
 import java.time.LocalDateTime;
@@ -53,12 +54,18 @@ class ResultPersisterIT {
         AtomicBoolean transactionActiveDuringEnqueue = new AtomicBoolean(false);
         doAnswer(invocation -> {
                     transactionActiveDuringEnqueue.set(TransactionSynchronizationManager.isActualTransactionActive());
-                    return null;
+                    return OutboxEntity.builder()
+                            .messageId(message.messageId())
+                            .exchange(invocation.getArgument(1))
+                            .routingKey(invocation.getArgument(2))
+                            .payload("{}")
+                            .build();
                 })
                 .when(outboxWriter)
                 .enqueue(any(), any(), any(), any());
 
-        resultPersister.persist(message, new EnrichmentResponse(message.userId(), true));
+        assertThat(resultPersister.persist(message, new EnrichmentResponse(message.userId(), true)))
+                .isPresent();
 
         assertThat(transactionActiveDuringEnqueue).isTrue();
         assertThat(resultRepository.existsByMessageId(message.messageId())).isTrue();
