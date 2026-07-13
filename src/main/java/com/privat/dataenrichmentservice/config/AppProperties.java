@@ -36,5 +36,5 @@ public record AppProperties(
                 @NotNull Duration maxInterval) {}
     }
 
-    public record Outbox(@NotNull Duration pollInterval, @Positive int batchSize) {}
+    public record Outbox(@NotNull Duration pollInterval, @Positive int batchSize, @NotNull Duration confirmTimeout) {}
 }

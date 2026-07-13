@@ -26,7 +26,8 @@ class AppPropertiesTest {
         "app.rabbit.retry.multiplier=2.0",
         "app.rabbit.retry.max-interval=10s",
         "app.outbox.poll-interval=500ms",
-        "app.outbox.batch-size=100"
+        "app.outbox.batch-size=100",
+        "app.outbox.confirm-timeout=5s"
     };
 
     private final ApplicationContextRunner runner =
@@ -57,6 +58,7 @@ class AppPropertiesTest {
 
             assertThat(props.outbox().pollInterval()).isEqualTo(Duration.ofMillis(500));
             assertThat(props.outbox().batchSize()).isEqualTo(100);
+            assertThat(props.outbox().confirmTimeout()).isEqualTo(Duration.ofSeconds(5));
         });
     }
 

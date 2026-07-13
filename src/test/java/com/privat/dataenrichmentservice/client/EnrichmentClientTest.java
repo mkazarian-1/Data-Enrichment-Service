@@ -15,36 +15,34 @@ import com.privat.dataenrichmentservice.client.dto.EnrichmentResponse;
 import com.privat.dataenrichmentservice.config.AppProperties;
 import com.privat.dataenrichmentservice.config.RestClientConfig;
 import java.time.Duration;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 class EnrichmentClientTest {
 
-    private static final Duration TIMEOUT = Duration.ofMillis(500);
+    private static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(5);
 
-    private static WireMockServer wireMock;
+    private WireMockServer wireMock;
 
     private EnrichmentClient client;
 
-    @BeforeAll
-    static void startServer() {
+    @BeforeEach
+    void setUp() {
         wireMock = new WireMockServer(options().dynamicPort());
         wireMock.start();
+        client = buildClient(DEFAULT_TIMEOUT);
     }
 
-    @AfterAll
-    static void stopServer() {
+    @AfterEach
+    void tearDown() {
         wireMock.stop();
     }
 
-    @BeforeEach
-    void setUp() {
-        wireMock.resetAll();
-        AppProperties properties =
-                new AppProperties(new AppProperties.Enrichment(wireMock.baseUrl(), TIMEOUT, TIMEOUT), null, null);
-        client = new EnrichmentClient(new RestClientConfig().enrichmentRestClient(properties));
+    private EnrichmentClient buildClient(Duration readTimeout) {
+        AppProperties properties = new AppProperties(
+                new AppProperties.Enrichment(wireMock.baseUrl(), DEFAULT_TIMEOUT, readTimeout), null, null);
+        return new EnrichmentClient(new RestClientConfig().enrichmentRestClient(properties));
     }
 
     @Test
@@ -89,10 +87,11 @@ class EnrichmentClientTest {
 
     @Test
     void readTimeoutIsTransient() {
+        EnrichmentClient shortTimeoutClient = buildClient(Duration.ofMillis(300));
         wireMock.stubFor(post("/enrich")
-                .willReturn(okJson("{\"userId\": 1, \"result\": true}")
-                        .withFixedDelay((int) TIMEOUT.plusSeconds(1).toMillis())));
+                .willReturn(okJson("{\"userId\": 1, \"result\": true}").withFixedDelay(1500)));
 
-        assertThatThrownBy(() -> client.enrich(1L, "request")).isInstanceOf(EnrichmentTransientException.class);
+        assertThatThrownBy(() -> shortTimeoutClient.enrich(1L, "request"))
+                .isInstanceOf(EnrichmentTransientException.class);
     }
 }

@@ -40,7 +40,6 @@ public class ResultEntity {
     @Column(nullable = false)
     private boolean result;
 
-    // The DB default (now()) is the single source of time; Hibernate reads it back after insert.
     @Generated
     @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
     private OffsetDateTime createdAt;
