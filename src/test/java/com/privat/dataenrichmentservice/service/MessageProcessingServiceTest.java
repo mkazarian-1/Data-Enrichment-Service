@@ -1,8 +1,10 @@
 package com.privat.dataenrichmentservice.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -15,6 +17,8 @@ import com.privat.dataenrichmentservice.client.dto.EnrichmentResponse;
 import com.privat.dataenrichmentservice.config.AppProperties;
 import com.privat.dataenrichmentservice.messaging.dto.IncomingMessage;
 import com.privat.dataenrichmentservice.messaging.dto.ResultMessage;
+import com.privat.dataenrichmentservice.outbox.OutboxEntity;
+import com.privat.dataenrichmentservice.outbox.OutboxRelay;
 import com.privat.dataenrichmentservice.outbox.OutboxWriter;
 import com.privat.dataenrichmentservice.persistence.ResultEntity;
 import com.privat.dataenrichmentservice.persistence.ResultRepository;
@@ -37,6 +41,7 @@ class MessageProcessingServiceTest {
 
     private static final UUID MESSAGE_ID = UUID.fromString("2b6a72cd-0f36-4e1a-9b4c-6f2f3a1d8e57");
     private static final long GENERATED_ID = 42L;
+    private static final long OUTBOX_ID = 7L;
     private static final IncomingMessage MESSAGE =
             new IncomingMessage(MESSAGE_ID, 12345678L, "request", LocalDateTime.of(2026, 7, 1, 10, 0));
     private static final EnrichmentResponse ENRICHMENT = new EnrichmentResponse(12345678L, true);
@@ -52,6 +57,9 @@ class MessageProcessingServiceTest {
 
     @Mock
     private OutboxWriter outboxWriter;
+
+    @Mock
+    private OutboxRelay outboxRelay;
 
     private MessageProcessingService service;
 
@@ -73,7 +81,18 @@ class MessageProcessingServiceTest {
 
         service = new MessageProcessingService(
                 enrichmentClient,
-                new ResultPersister(resultRepository, new ResultMapperImpl(), outboxWriter, properties));
+                new ResultPersister(resultRepository, new ResultMapperImpl(), outboxWriter, properties),
+                outboxRelay);
+    }
+
+    private static OutboxEntity outboxRow() {
+        return OutboxEntity.builder()
+                .id(OUTBOX_ID)
+                .messageId(MESSAGE_ID)
+                .exchange(RESULT_EXCHANGE)
+                .routingKey(RESULT_ROUTING_KEY)
+                .payload("{}")
+                .build();
     }
 
     @Test
@@ -85,13 +104,14 @@ class MessageProcessingServiceTest {
             entity.setId(GENERATED_ID);
             return entity;
         });
+        when(outboxWriter.enqueue(any(), any(), any(), any())).thenReturn(outboxRow());
 
         service.process(MESSAGE);
 
         verify(enrichmentClient).enrich(12345678L, "request");
 
         ArgumentCaptor<ResultEntity> savedEntity = ArgumentCaptor.forClass(ResultEntity.class);
-        InOrder inOrder = inOrder(resultRepository, outboxWriter);
+        InOrder inOrder = inOrder(resultRepository, outboxWriter, outboxRelay);
         inOrder.verify(resultRepository).save(savedEntity.capture());
         inOrder.verify(outboxWriter)
                 .enqueue(
@@ -100,10 +120,28 @@ class MessageProcessingServiceTest {
                         RESULT_ROUTING_KEY,
                         new ResultMessage(GENERATED_ID, MESSAGE_ID, true));
 
+        inOrder.verify(outboxRelay).publishNow(OUTBOX_ID);
+
         assertThat(savedEntity.getValue().getMessageId()).isEqualTo(MESSAGE_ID);
         assertThat(savedEntity.getValue().getUserId()).isEqualTo(12345678L);
         assertThat(savedEntity.getValue().getAction()).isEqualTo("request");
         assertThat(savedEntity.getValue().isResult()).isTrue();
+    }
+
+    @Test
+    void immediatePublishFailureIsSwallowed() {
+        when(enrichmentClient.enrich(12345678L, "request")).thenReturn(ENRICHMENT);
+        when(resultRepository.existsByMessageId(MESSAGE_ID)).thenReturn(false);
+        when(resultRepository.save(any())).thenAnswer(invocation -> {
+            ResultEntity entity = invocation.getArgument(0);
+            entity.setId(GENERATED_ID);
+            return entity;
+        });
+        when(outboxWriter.enqueue(any(), any(), any(), any())).thenReturn(outboxRow());
+
+        doThrow(new RuntimeException("broker unavailable")).when(outboxRelay).publishNow(OUTBOX_ID);
+
+        assertThatCode(() -> service.process(MESSAGE)).doesNotThrowAnyException();
     }
 
     @Test
@@ -114,7 +152,7 @@ class MessageProcessingServiceTest {
         service.process(MESSAGE);
 
         verify(resultRepository, never()).save(any());
-        verifyNoInteractions(outboxWriter);
+        verifyNoInteractions(outboxWriter, outboxRelay);
     }
 
     @Test
@@ -126,7 +164,7 @@ class MessageProcessingServiceTest {
 
         service.process(MESSAGE);
 
-        verifyNoInteractions(outboxWriter);
+        verifyNoInteractions(outboxWriter, outboxRelay);
     }
 
     @Test
@@ -136,7 +174,7 @@ class MessageProcessingServiceTest {
 
         assertThatThrownBy(() -> service.process(MESSAGE)).isInstanceOf(EnrichmentTransientException.class);
 
-        verifyNoInteractions(resultRepository, outboxWriter);
+        verifyNoInteractions(resultRepository, outboxWriter, outboxRelay);
     }
 
     @Test
@@ -147,6 +185,6 @@ class MessageProcessingServiceTest {
 
         assertThatThrownBy(() -> service.process(MESSAGE)).isInstanceOf(DataAccessException.class);
 
-        verifyNoInteractions(outboxWriter);
+        verifyNoInteractions(outboxWriter, outboxRelay);
     }
 }

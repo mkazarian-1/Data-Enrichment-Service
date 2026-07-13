@@ -4,10 +4,12 @@ import com.privat.dataenrichmentservice.client.dto.EnrichmentResponse;
 import com.privat.dataenrichmentservice.config.AppProperties;
 import com.privat.dataenrichmentservice.messaging.dto.IncomingMessage;
 import com.privat.dataenrichmentservice.messaging.dto.ResultMessage;
+import com.privat.dataenrichmentservice.outbox.OutboxEntity;
 import com.privat.dataenrichmentservice.outbox.OutboxWriter;
 import com.privat.dataenrichmentservice.persistence.ResultEntity;
 import com.privat.dataenrichmentservice.persistence.ResultRepository;
 import com.privat.dataenrichmentservice.persistence.mapper.ResultMapper;
+import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,13 +35,13 @@ public class ResultPersister {
     }
 
     @Transactional
-    public void persist(IncomingMessage message, EnrichmentResponse enrichment) {
+    public Optional<OutboxEntity> persist(IncomingMessage message, EnrichmentResponse enrichment) {
         if (resultRepository.existsByMessageId(message.messageId())) {
             log.warn("Message already processed, skipping: messageId={}", message.messageId());
-            return;
+            return Optional.empty();
         }
         ResultEntity saved = resultRepository.save(resultMapper.toEntity(message, enrichment));
-        outboxWriter.enqueue(
+        OutboxEntity outboxRow = outboxWriter.enqueue(
                 message.messageId(),
                 rabbit.resultExchange(),
                 rabbit.resultRoutingKey(),
@@ -48,5 +50,6 @@ public class ResultPersister {
                 "Result persisted and outbox event enqueued: messageId={}, logId={}",
                 message.messageId(),
                 saved.getId());
+        return Optional.of(outboxRow);
     }
 }

@@ -6,12 +6,14 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.privat.dataenrichmentservice.config.AppProperties;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -83,8 +85,6 @@ class OutboxRelayTest {
     void confirmTimeoutLeavesRowPending() {
         OutboxEntity row = pendingRow();
         when(outboxRepository.findPendingBatch(BATCH_SIZE)).thenReturn(List.of(row));
-        // No answer stubbing: the confirm future is never completed, so the relay waits out its
-        // 200 ms confirm timeout.
 
         relay.relayPendingBatch();
 
@@ -141,6 +141,29 @@ class OutboxRelayTest {
         relay.relayPendingBatch();
 
         verify(outboxRepository).findPendingBatch(BATCH_SIZE);
+    }
+
+    @Test
+    void publishNowClaimsRowPublishesAndMarksSent() {
+        OutboxEntity row = pendingRow();
+        when(outboxRepository.findPendingForUpdate(row.getId())).thenReturn(Optional.of(row));
+        answerConfirm(true);
+
+        relay.publishNow(row.getId());
+
+        verify(rabbitTemplate).send(eq(EXCHANGE), eq(ROUTING_KEY), any(Message.class), any(CorrelationData.class));
+        assertThat(row.getStatus()).isEqualTo(OutboxStatus.SENT);
+        assertThat(row.getSentAt()).isNotNull();
+    }
+
+    @Test
+    void publishNowIsNoOpWhenRowAlreadyClaimedOrSent() {
+        // SKIP LOCKED returned nothing: the scheduled relay already holds/sent this row.
+        when(outboxRepository.findPendingForUpdate(1L)).thenReturn(Optional.empty());
+
+        relay.publishNow(1L);
+
+        verifyNoInteractions(rabbitTemplate);
     }
 
     private void answerConfirm(boolean ack) {

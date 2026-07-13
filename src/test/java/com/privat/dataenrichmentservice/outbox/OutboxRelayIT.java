@@ -28,8 +28,6 @@ import tools.jackson.databind.json.JsonMapper;
 
 @SpringBootTest
 @Import(TestcontainersConfiguration.class)
-// Closed after the class so its live listeners cannot steal messages from later IT classes
-// sharing the same broker container (each IT has a unique context anyway — nothing is re-cached).
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 class OutboxRelayIT {
 
@@ -40,8 +38,6 @@ class OutboxRelayIT {
     @DynamicPropertySource
     static void fastRelayProperties(DynamicPropertyRegistry registry) {
         registry.add("app.outbox.poll-interval", () -> "100ms");
-        // A publish to a missing exchange has no confirm to wait for — keep the timeout short so
-        // the poison-row test observes the attempts increment quickly.
         registry.add("app.outbox.confirm-timeout", () -> "1s");
     }
 
@@ -82,6 +78,22 @@ class OutboxRelayIT {
     }
 
     @Test
+    void publishNowDeliversRowWithoutWaitingForAScheduledTick() {
+        UUID messageId = UUID.randomUUID();
+        String payload = "{\"logId\":9,\"messageId\":\"%s\",\"result\":true}".formatted(messageId);
+        OutboxEntity row = outboxRepository.save(resultRow(messageId, payload));
+
+        outboxRelay.publishNow(row.getId());
+
+        awaitMessageWithJson(payload);
+        await().atMost(AWAIT_TIMEOUT).untilAsserted(() -> {
+            OutboxEntity sent = outboxRepository.findById(row.getId()).orElseThrow();
+            assertThat(sent.getStatus()).isEqualTo(OutboxStatus.SENT);
+            assertThat(sent.getSentAt()).isNotNull();
+        });
+    }
+
+    @Test
     void rowTargetingMissingExchangeStaysPendingAndRelaySurvives() {
         UUID poisonId = UUID.randomUUID();
         OutboxEntity poison = outboxRepository.save(OutboxEntity.builder()
@@ -97,7 +109,6 @@ class OutboxRelayIT {
             assertThat(reloaded.getAttempts()).isGreaterThanOrEqualTo(1);
         });
 
-        // The scheduler must have survived the poison row: a healthy row still goes through.
         UUID healthyId = UUID.randomUUID();
         String healthyPayload = "{\"logId\":3,\"messageId\":\"%s\",\"result\":true}".formatted(healthyId);
         outboxRepository.save(resultRow(healthyId, healthyPayload));
@@ -116,8 +127,6 @@ class OutboxRelayIT {
                 .toList();
         outboxRepository.saveAll(rows);
 
-        // Two manual drains racing each other (and the scheduled ticks): SKIP LOCKED must ensure
-        // every row is claimed and published by exactly one of them.
         CompletableFuture.allOf(
                         CompletableFuture.runAsync(outboxRelay::relayPendingBatch),
                         CompletableFuture.runAsync(outboxRelay::relayPendingBatch))
@@ -126,8 +135,6 @@ class OutboxRelayIT {
         await().atMost(AWAIT_TIMEOUT).untilAsserted(() -> assertThat(outboxRepository.findAll())
                 .allSatisfy(row -> assertThat(row.getStatus()).isEqualTo(OutboxStatus.SENT)));
 
-        // Count deliveries per payload, ignoring messages from other cached test contexts whose
-        // relays share this broker: each of OUR rows must arrive exactly once.
         Map<JsonNode, Integer> deliveredCounts = new HashMap<>();
         Message received;
         while ((received = rabbitTemplate.receive(properties.rabbit().resultQueue(), 1000)) != null) {
@@ -140,12 +147,6 @@ class OutboxRelayIT {
         }
     }
 
-    /**
-     * Receives from the shared result queue until a message carrying this JSON arrives. Compared
-     * structurally, not byte-wise: the payload column is jsonb, so Postgres returns a canonical
-     * rendering (different whitespace) of what was stored. Foreign messages published by relays of
-     * other cached Spring test contexts are discarded instead of failing the assertion.
-     */
     private void awaitMessageWithJson(String expectedJson) {
         JsonNode expected = JSON.readTree(expectedJson);
         await().atMost(AWAIT_TIMEOUT).until(() -> {

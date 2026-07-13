@@ -18,8 +18,8 @@ public class OutboxWriter {
     }
 
     @Transactional(propagation = Propagation.MANDATORY)
-    public void enqueue(UUID messageId, String exchange, String routingKey, Object payload) {
-        outboxRepository.save(OutboxEntity.builder()
+    public OutboxEntity enqueue(UUID messageId, String exchange, String routingKey, Object payload) {
+        return outboxRepository.save(OutboxEntity.builder()
                 .messageId(messageId)
                 .exchange(exchange)
                 .routingKey(routingKey)

@@ -35,17 +35,26 @@ public class OutboxRelay {
     public void relayPendingBatch() {
         List<OutboxEntity> batch = outboxRepository.findPendingBatch(outbox.batchSize());
         for (OutboxEntity row : batch) {
-            if (publishWithConfirm(row)) {
-                row.setStatus(OutboxStatus.SENT);
-                row.setSentAt(OffsetDateTime.now());
-            } else {
-                row.setAttempts(row.getAttempts() + 1);
-                if (row.getAttempts() >= ATTEMPTS_ALERT_THRESHOLD) {
-                    log.error(
-                            "Outbox row keeps failing and needs attention: messageId={}, attempts={}",
-                            row.getMessageId(),
-                            row.getAttempts());
-                }
+            publishAndRecord(row);
+        }
+    }
+
+    @Transactional
+    public void publishNow(long outboxId) {
+        outboxRepository.findPendingForUpdate(outboxId).ifPresent(this::publishAndRecord);
+    }
+
+    private void publishAndRecord(OutboxEntity row) {
+        if (publishWithConfirm(row)) {
+            row.setStatus(OutboxStatus.SENT);
+            row.setSentAt(OffsetDateTime.now());
+        } else {
+            row.setAttempts(row.getAttempts() + 1);
+            if (row.getAttempts() >= ATTEMPTS_ALERT_THRESHOLD) {
+                log.error(
+                        "Outbox row keeps failing and needs attention: messageId={}, attempts={}",
+                        row.getMessageId(),
+                        row.getAttempts());
             }
         }
     }
